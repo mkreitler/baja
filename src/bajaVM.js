@@ -2,6 +2,8 @@
 baja.instructions   = []
 baja.bStarted       = false;
 baja.pc             = -1;    // Program counter
+baja.current        = null;
+baja.loopID         = -1;
 
 baja.add = function(label, fn) {
     baja.instructions.push({type: "block", code: fn});
@@ -43,8 +45,9 @@ baja.loop = function(program) {
     baja.exec();
 };
 
-baja.end = function() {
+baja.exitLoop = function() {
     if (baja.current) {
+        cancelAnimationFrame(baja.loopID);
         baja.current = null;
     }
     else {
@@ -54,7 +57,7 @@ baja.end = function() {
 
 baja.exec = function() {
     if (baja.current) {
-        requestAnimationFrame(baja.exec);
+        baja.loopID = requestAnimationFrame(baja.exec);
         baja.current();
     }
     else {
