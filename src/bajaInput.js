@@ -5,26 +5,40 @@ keys.lastCode = -1;
 keys.got = "";
 keys.input = null;
 keys.inputOut = null;
+keys.minCol = 0;
 keys.bWantsNewInput = true;
+keys.INPUT_STATES = {NONE: 0,
+                     READ_LINE: 1,
+                     READ_KEY: 2};
+keys.inputState = keys.INPUT_STATES.NONE;
 
 keys.readLine = function() {
     var retVal = "";
+
+    if (keys.inputState != keys.INPUT_STATES.READ_LINE) {
+        keys.minCol = view.col;
+    }
+
+    keys.inputState = keys.INPUT_STATES.READ_LINE;
     
     retVal = keys.inputOut;
     keys.inputOut = null;
+    view.blink();
     
     return retVal;
 };
 
 keys.readKey = function() {
     var retVal = keys.got;
+
+    keys.inputState = keys.INPUT_STATES.READ_KEY;
     
     if (retVal.length > 1) {
         if (retVal === "space") {
             retVal = " ";
         }
     }
-    
+
     keys.got = "";
     return retVal;
 };
@@ -49,6 +63,16 @@ keys.onPress = function(e) {
             keys.inputOut = keys.input;
             keys.bWantsNewInput = true;
             keys.got = view.NEWLINE;
+            keys.inputState = keys.INPUT_STATES.NONE;
+        }
+        else if (specialCode === "space") {
+            if (keys.bWantsNewInput) {
+                keys.input = "";
+                keys.bWantsNewInput = false;
+            }
+
+            view.clearBlink();
+            keys.input += " ";
         }
     }
     else {
@@ -60,7 +84,14 @@ keys.onPress = function(e) {
             keys.bWantsNewInput = false;
         }
         
+        view.clearBlink();
         keys.input += keys.got;
+    }
+
+    if (keys.inputState === keys.INPUT_STATES.READ_LINE) {
+        view.cursorTo(view.row, keys.minCol);
+        view.print(keys.input);
+        view.cursorTo(view.row, keys.minCol + keys.input.length);
     }
 };
 
@@ -76,6 +107,19 @@ keys.onDown = function(e) {
         keys.special.down[specialCode] = true;
         keys.normal.last = "";
         keys.got = specialCode;
+
+        if (keys.inputState === keys.INPUT_STATES.READ_LINE) {
+            if (specialCode === "left" ||
+                specialCode === "backspace" ||
+                specialCode === "del") {
+
+                view.clearBlink();
+                keys.input = keys.input.substring(0, keys.input.length - 1);
+                if (view.col > keys.minCol) {
+                    view.cursorMove(0, -1);
+                }
+            }
+        }
     }
     else {
         // 'Normal' key.

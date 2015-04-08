@@ -7,12 +7,17 @@ view.columns = 80;
 view.rows = 25;
 view.COL_TO_CHAR = 12 / 20;
 view.COL_TO_CHAR_SPACING = 11.69 / 20;
+view.BLINK_INTERVAL = 0.67; // 2/3 of a second
 view.backColor = "black";
 view.foreColor = "green";
 view.fontSize = 1;
 view.row = 0;
 view.col = 0;
 view.fontInfo = null;
+view.bCursorOn = false;
+view.blinkTimer = 0;
+view.blinkClock = 0;
+view.cellSize = {width: 0, height: 0};
 
 view.create = function() {
     view.canvas = document.createElement('canvas');
@@ -20,6 +25,49 @@ view.create = function() {
     view.ctxt = view.canvas.getContext("2d");
     view.ctxt.textBaseline = "top";
     view.resize();
+};
+view.resetBlink = function() {
+    view.blinkTimer = 0;
+    view.blinkClock = Date.now();
+    view.bCursorOn = false;
+};
+view.clearBlink = function() {
+    var x, y;
+
+    view.ctxt.fillStyle = view.backColor;
+    x = view.xFromCol(view.col);
+    y = view.yFromRow(view.row);
+    view.ctxt.fillRect(x, y, view.cellSize.width, view.cellSize.height);
+};
+view.blink = function() {
+    var now = Date.now(),
+              x,
+              y;
+
+    view.blinkTimer += (now - view.blinkClock) * 0.001;
+    while (view.blinkTimer >= view.BLINK_INTERVAL) {
+        view.blinkTimer -= view.BLINK_INTERVAL;
+        view.bCursorOn = !view.bCursorOn;
+    }
+
+    view.blinkClock = now;
+
+    if (view.bCursorOn) {
+        view.ctxt.fillStyle = view.foreColor;
+    }
+    else {
+        view.ctxt.fillStyle = view.backColor;
+    }
+
+    x = view.xFromCol(view.col);
+    y = view.yFromRow(view.row);
+    view.ctxt.fillRect(x, y, view.cellSize.width, view.cellSize.height);
+};
+view.xFromCol = function(col) {
+    return col * view.cellSize.width;
+};
+view.yFromRow = function(row) {
+    return row * view.cellSize.height;
 };
 view.setBackColor = function(newBack) {
     view.backColor = view.backColor;
@@ -43,6 +91,8 @@ view.resizeFont = function() {
     view.fontInfo = "" + view.fontSize + "px Courier";
     view.ctxt.font = view.fontInfo;
     view.rows = Math.floor(view.canvas.height / view.columns / view.COL_TO_CHAR);
+    view.cellSize.width = Math.round(view.fontSize * view.COL_TO_CHAR_SPACING);
+    view.cellSize.height = Math.round(view.fontSize);
 };
 view.clear = function() {
     if (view.backColor) {
@@ -80,8 +130,8 @@ view.printAt = function(text, newRow, newCol) {
         view.col = newCol - 1;
     }
     
-    x = view.col * view.fontSize * view.COL_TO_CHAR_SPACING,
-    y = view.row * view.fontSize,
+    x = view.xFromCol(view.col);
+    y = view.yFromRow(view.row);
     cr = text.indexOf(view.NEWLINE) >= 0;
     
     if (cr) {
